@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Steem Escrow</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link href="css/app.css" rel="stylesheet">
+        
+        <!--[if lt IE 9]>
+          <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+          <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+        <![endif]-->
+    </head>
+    <body>
+        <nav class="navbar navbar-inverse navbar-static-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="./">Steem Escrow</a>
+                </div>
+                <div class="collapse navbar-collapse" id="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li><a href="https://steemit.com/@reazuliqbal">@reazuliqbal</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <main class="container">
+            <div id="alert" class="alert"></div>
+
+            <form action="#" method="post" id="escrowTransfer" class="hidden">
+                <div class="row">
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label class="control-label" for="sender">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-addon">@</span>
+                                <input type="text" id="sender" name="sender" class="form-control" value="">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label class="control-label" for="recipient">Recipient's Username</label>
+                            <div class="input-group">
+                                <span class="input-group-addon">@</span>
+                                <input type="text" id="recipient" name="recipient" class="form-control" required="">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label class="control-label" for="agent">Agent's Username</label>
+                            <select name="agent" id="agent" class="form-control" required="">
+                                <option value="">Select an agent</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                        
+                <div class="form-group">
+                    <label class="control-label" for="">Active Private Key</label>
+                    <input type="text" name="active_key" id="active_key" class="form-control" required="">
+                </div>
+                
+                <div class="row">
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label class="control-label" for="amount">Amount to Send</label>
+                            <input type="number" name="amount" id="amount" class="form-control" step="0.050" min="0" value="1.000">
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="control-label" for="currency">Currency</label>
+                        <select name="currency" id="currency" class="form-control">
+                            <option value="STEEM">STEEM</option>
+                            <option value="SBD">SBD</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label class="control-label" for="fee">Fee</label>
+                            <input type="number" id="fee" name="fee" class="form-control" value="0.00" disabled="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="control-label" for="">Approval Timelimit</label>
+                            <select name="deadline" id="deadline" class="form-control">
+                                <option value="3">3 Hours</option>
+                                <option value="6">6 Hours</option>
+                                <option value="12">12 Hours</option>
+                                <option value="24">24 Hours</option>
+                                <option value="48">2 Days</option>
+                                <option value="72">3 Days</option>
+                                <option value="120">5 Days</option>
+                                <option value="168">7 Days</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="control-label" for="expiration">Warranty Period</label>
+                            <select name="expiration" id="expiration" class="form-control">
+                                <option value="168">1 Week</option>
+                                <option value="336">2 Weeks</option>
+                                <option value="504">3 Weeks</option>
+                                <option value="720">1 Month</option>
+                                <option value="2160">3 Months</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label" for="terms">Terms of Transaction</label>
+                    <textarea name="terms" id="terms" class="form-control"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg">Send</button>
+            </form>
+
+            <div id="escrowControlPanel" class="hidden">
+                <div class="panel panel-default">
+                    <div class="panel-heading"><strong>Transaction Summary</strong></div>
+                    <div class="panel-body">
+                        <div class="table-responsive">
+                            <table class="table table-condensed table-striped">
+                                <tr>
+                                    <td>Escrow ID</td>
+                                    <td id="escrow_id">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td>Escrow Amount</td>
+                                    <td id="escrow_amount">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td>Agent Fee</td>
+                                    <td id="agent_fee">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td>Current Blockchain Date</td>
+                                    <td id="blockchain_date">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td>Escrow Approval Deadline</td>
+                                    <td id="approval_deadline">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td>Escrow Expiration Date</td>
+                                    <td id="expiration_date">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td>Current Status</td>
+                                    <td id="escrow_status">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td>Escrow Terms</td>
+                                    <td id="escrow_terms">Loading...</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-4">
+                        <div class="panel panel-default">
+                            <div class="panel-heading" id="sender_name"><strong>Sender:</strong>&nbsp;</div>
+                            <div class="panel-body">
+                                <p id="sender_action"></p>
+                                <button id="senderDispute" class="btn btn-danger" data-toggle="modal" data-target="#actionModal">Dispute</button>
+                                <button id="senderRelease" class="btn btn-info" data-toggle="modal" data-target="#actionModal">Release Fund</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="panel panel-default">
+                            <div class="panel-heading" id="receiver_name"><strong>Receiver:</strong>&nbsp;</div>
+                            <div class="panel-body">
+                                <p id="receiver_action"></p>
+                                <button id="receiverDisapprove" class="btn btn-danger" data-toggle="modal" data-target="#actionModal">Disapprove and Cancel</button>
+                                <button id="receiverApprove" class="btn btn-success" data-toggle="modal" data-target="#actionModal">Approve</button>
+                                <button id="receiverDispute" class="btn btn-danger" data-toggle="modal" data-target="#actionModal">Dispute</button>
+                                <button id="receiverRelease" class="btn btn-info" data-toggle="modal" data-target="#actionModal">Release Fund</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="panel panel-default">
+                            <div class="panel-heading" id="agent_name"><strong>Agent:</strong>&nbsp;</div>
+                            <div class="panel-body">
+                                <p id="agent_action"></p>
+                                <button id="agentDisapprove" class="btn btn-danger" data-toggle="modal" data-target="#actionModal">Disapprove and Cancel</button>
+                                <button id="agentApprove" class="btn btn-success" data-toggle="modal" data-target="#actionModal">Approve</button>
+                                <button id="agentRelease" class="btn btn-info" data-toggle="modal" data-target="#actionModal">Release Fund</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="container text-center">
+                <p>Steem Escrow is inspired by <a href="https://steemit.com/escrow/@xtar/open-source-standalone-gui-for-steem-escrow-transactions">@xtar
+                </a>'s <a href="https://github.com/MrXtar/steem-golos-escrow-gui">STEEM and GOLOS Escrow Transactions GUI</a></p>
+            </div>
+        </footer>
+
+        <div class="modal fade" tabindex="-1" role="dialog" id="actionModal">
+            <form action="#" id="actionForm">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <h4 class="modal-title">Are you sure?</h4>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="user" name="user">
+                            <input type="hidden" id="action" name="action">
+                            <input type="hidden" id="action_value" name="action_value">
+                            <div class="form-group">
+                                <label for="">Active Private Key</label>
+                                <input type="text" id="wif" name="wif" class="form-control">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+
+
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+        <script src="//cdn.steemjs.com/lib/latest/steem.min.js"></script>
+        <script src="js/app.js"></script>
+
+        <script>
+            $('#actionModal').on('show.bs.modal', function (event) {
+                var btn = $(event.relatedTarget);
+                var user = btn.data('user');
+                var action = btn.data('action');
+
+                var modal = $(this);
+                modal.find('.modal-body input#action').val(action);
+                modal.find('.modal-body input#user').val(user);
+
+                if(action === 'approval') {
+                    modal.find('.modal-body input#action_value').val(btn.data('approve'));
+                } else if(action === 'agent_release') {
+                    var to = btn.data('to');
+                    var from = btn.data('from');
+                    modal.find('.modal-body').append('<div class="form-group"><label>Release To</label><br><div class="radio"><label><input type="radio" id="release_to" name="release_to" value="'+ to +'">Reciever ('+ to +')</div></label><div class="radio"><label><input type="radio" id="release_to" name="release_to" value="'+ from +'">Sender ('+ from +')</label></div></div>');
+                }
+            });
+            $('#actionModal').on('hide.bs.modal', function (event) {
+                var modal = $(this);
+                modal.find('.modal-body input#action').val('');
+                modal.find('.modal-body input#user').val('');
+                modal.find('.modal-body input#wif').val('');
+            });
+        </script>
+
+    </body>
+</html>
