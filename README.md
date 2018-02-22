@@ -12,6 +12,14 @@ At first a Steemit.com user need to visit https://codebull.github.io/SteemEscrow
 
 If any of them does not approve the transaction, the escrow transaction will be canceled. If both of the receiver and agent approves, transaction will go through and within the transaction warranty period sender and receiver can release and return the fund to receiver or sender repectively. If any of the sender and receiver dispute the transaction then agent will decided who to send the fund.
 
+By default it usage `testnet.steem.vc` not real steemit.com. To use real Steemit.com accounts please remove the following lines from the top of `js/app.js`.
+```javascript
+// STEEM cofig for test chain
+steem.api.setOptions({ url: 'wss://testnet.steem.vc' });
+steem.config.set('address_prefix', 'STX');
+steem.config.set('chain_id', '79276aea5d4877d9a25892eaa01b0adf019d3e5cb12a97478df3298ccdd01673');
+```
+
 ## Technology Stack
 - HTML, CSS, JS
 - jQuery (3.3.1)
@@ -19,7 +27,7 @@ If any of them does not approve the transaction, the escrow transaction will be 
 - Steem JS (0.7.1)
 
 ## How to contribute
-Clone this repository and open the files in a code editor. JS can be edited from src/js/app.js and CSS can be edited from /src/css/app.scss.
+Clone this repository and open the files in a code editor. JS can be edited from `src/js/app.js` and CSS can be edited from `/src/css/app.scss`.
 #### Requirements:
 - Node Js
 - NPM
@@ -27,4 +35,4 @@ Clone this repository and open the files in a code editor. JS can be edited from
 - Gulp
 - BrowserSync
 
-On the project root open up Terminal and write ```npm install``` to install dependencies. After installation write ```gulp``` to start BrowserSync live reload server and start editing on code editor.
+On the project root open up Terminal and write `npm install` to install dependencies. After installation write `gulp` to start BrowserSync live reload server and start editing on code editor.
