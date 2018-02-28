@@ -6,31 +6,148 @@ steem.config.set('chain_id', '79276aea5d4877d9a25892eaa01b0adf019d3e5cb12a97478d
 var transaction = {};
 
 // Getting agents list from a JSON file or can be an API
-function getAgents() {
+$.getJSON('agents.json', function(agents_data) {
 
-    $.getJSON('agents.json', function(agents_data) {
+    var agent_names = agents_data.map(function(value){return value.name;});
 
-        var agent_names = agents_data.map(function(value){return value.name;});
+    steem.api.getAccounts(agent_names, function(err, result) {
+        if(!err) {
+            $.each(result, function(index, data) {
 
-        steem.api.getAccounts(agent_names, function(err, result) {
-            if(!err) {
-                $.each(result, function(index, data) {
+                $('#agent').append('<option value="'+ data.name +'" data-fee="'+ agents_data[index].fee +'">'+ data.name +' ('+ calcRep(data.reputation) +') Fee: '+ agents_data[index].fee +'</option>');
+            });
+        }
+    });
+});
 
-                    $('#agent').append('<option value="'+ data.name +'" data-fee="'+ agents_data[index].fee +'">'+ data.name +' ('+ calcRep(data.reputation) +') Fee: '+ agents_data[index].fee +'</option>');
-                });
+// Checking if user exists, if yes then shows balnce and add max limit in the amount input.
+function getBalance(name, input, show_balance) {
+
+    var parent = input.parents('.form-group');
+
+    steem.api.getAccounts([name], function(err, response) {
+        if( !err && response.length ) {
+            parent.removeClass('has-error').addClass('has-success');
+
+            if (show_balance) {
+                var steem = response[0].balance.split(' ');
+                var sbd = response[0].sbd_balance.split(' ');
+
+                parent.find('.help-block').remove();
+                parent.append('<p class="help-block">User has '+ response[0].balance +' and '+ response[0].sbd_balance +'</p>');
+
+                if($('#amount').data('maxSteem') == null) {
+                    $('#amount').data({'maxSteem': steem[0], 'maxSbd': sbd[0]});
+                }
             }
-        });
+        } else {
+            parent.removeClass('has-success').addClass('has-error')
+        }
     });
 }
-getAgents();
 
-// Reputation calculation helper
-function calcRep(rep) {
-    return (Math.max(Math.log10(Math.abs(parseInt(rep))) - 9, 0) * (parseInt(rep) > 0 ? 1 : -1) * 9 + 25).toFixed(1);
-}
+// Calling getBalance function when user finishes typing
+var timeout = null;
+$('#sender, #recipient').on('input', function() {
+    var input = $(this);
+    clearTimeout(timeout);
+    timeout = setTimeout(function () {
+        getBalance(input.val(), input, true);
+    }, 500);
+});
 
+// Validating how much max STEEM or SBD can be sent after agent fee
+$('#amount').keyup(function() {
+    var input = $(this);
+    var parent = input.parents('.form-group');
+    var error;
+
+    if($('#currency option:selected').val() === 'STEEM') {
+        (parseFloat(input.val()) > parseFloat(input.data('maxSteem'))) ? error = 'Maximum of '+ input.data('maxSteem') +' STEEM can be sent after agent fee.' : error = '';
+    } else if($('#currency option:selected').val() === 'SBD') {
+        (parseFloat(input.val()) > parseFloat(input.data('maxSbd'))) ? error = 'Maximum of '+ input.data('maxSbd') +' SBD can be sent after agent fee.' : error = '';
+    }
+    if ( error != '') {
+        parent.find('.help-block').remove();
+        parent.removeClass('has-success').addClass('has-error');
+        parent.append('<p class="help-block">' + error + '</p>');
+    } else {
+        parent.find('.help-block').remove();
+        parent.removeClass('has-error').addClass('has-success');
+    }
+});
+
+// Formating Amount and Fees to 3 decimal point
+$('#amount, #fee').focusout(function() {
+    var parent = $(this).parents('.form-group');
+
+    if (/^[+-]?\d+(\.\d+)?$/.test($(this).val())) {
+        var number = parseFloat($(this).val()).toFixed(3);
+        $(this).val(number);
+
+        parent.find('.help-block').remove();
+    } else {
+        parent.find('.help-block').remove();
+        parent.removeClass('has-success').addClass('has-error');
+        parent.append('<p class="help-block">Please enter a number.</p>');
+    }
+});
+
+$('#currency').change(function(event) {
+    $('#amount').keyup();
+});
+
+// Filling up fee field with select agent's fee
 $('#agent').change(function(event) {
-    $('#fee').val($('#agent option:selected').data('fee'));
+    var fee = parseFloat($('#agent option:selected').data('fee')).toFixed(3);
+    var max_steem = parseFloat($('#amount').data('maxSteem')) - fee;
+    var max_sbd = parseFloat($('#amount').data('maxSbd')) - fee;
+
+    $('#amount').data({'maxSteem': max_steem, 'maxSbd': max_sbd});
+    $('#fee').val(fee);
+});
+
+// Checking if the Active Key is a WIF
+timeout = null;
+$('#active_key').on('input', function() {
+    var input = $(this);
+    var parent = input.parents('.form-group');
+    clearTimeout(timeout);
+    timeout = setTimeout(function () {
+        var error = [];
+
+        if($('#sender').val() != '') {
+
+            if( steem.auth.isWif(input.val()) ) {
+
+                steem.api.getAccounts([$('#sender').val()], function(err, response) {
+                    if( !err && response.length ) {
+                        if( steem.auth.wifIsValid(input.val(), response[0]['active']['key_auths'][0][0]) ) {
+                            parent.find('.help-block').remove();
+                            parent.removeClass('has-error').addClass('has-success');
+                        } else {
+                            parent.find('.help-block').remove();
+                            parent.removeClass('has-success').addClass('has-error');
+                            parent.append('<p class="help-block">This WIF is not yours, please <a href="https://steemit.com/@'+ $('#sender').val() +'/permissions">click here</a> to find yours.</p>');
+                        }
+                    }
+                });
+            } else {
+                error = 'Please enter a valid Active WIF.';
+            }
+        } else {
+            error = 'Please fill out sender name first.';
+        }
+
+        if ( error.length > 0) {
+            parent.find('.help-block').remove();
+            parent.removeClass('has-success').addClass('has-error');
+            parent.append('<p class="help-block">' + error + '</p>');
+        } else {
+            parent.find('.help-block').remove();
+            parent.removeClass('has-error').addClass('has-success');
+        }
+    }, 500);
 });
 
 // Escrow transafer form handling
@@ -56,35 +173,40 @@ $('#escrowTransfer').submit(function(event) {
             sbdAmount = amount + ' ' + currency;
         }
 
-        steem.api.getDynamicGlobalProperties(function(err, response) {
+    steem.api.getDynamicGlobalProperties(function(err, response) {
 
-            var ratificationDeadline = new Date(response.time+'Z');
-            ratificationDeadline.setMinutes(ratificationDeadline.getMinutes() + parseInt($('#deadline').val()) * 60 - 1);
+        var ratificationDeadline = new Date(response.time+'Z');
+        ratificationDeadline.setMinutes(ratificationDeadline.getMinutes() + parseInt($('#deadline').val()) * 60 - 1);
 
-            var escrowExpiration = new Date(response.time+'Z');
-            escrowExpiration.setHours(escrowExpiration.getHours() + parseInt($('#expiration').val()));
+        var escrowExpiration = new Date(response.time+'Z');
+        escrowExpiration.setHours(escrowExpiration.getHours() + parseInt($('#expiration').val()));
 
 
-            steem.broadcast.escrowTransfer(wif, from, to, agent, escrowId, sbdAmount, steemAmount, fee, ratificationDeadline, escrowExpiration, jsonMeta, function(err, response) {
-                
-                if(!err && response.ref_block_num) {
-                    var cp_url = window.location.href +'?escrowId='+ escrowId +'&sender='+ from;
-                    $('#alert').addClass('alert-success').append('Escrow request has be created successfully. ID:' + escrowId +'<br>Control Panel URL: <a href="'+ cp_url +'">'+ cp_url +'</a><br>Send this link to receiver and escrow agent for their approval.').fadeIn();
+        steem.broadcast.escrowTransfer(wif, from, to, agent, escrowId, sbdAmount, steemAmount, fee, ratificationDeadline, escrowExpiration, jsonMeta, function(err, response) {
+            
+            if(!err && response.ref_block_num) {
+                var cp_url = window.location.href +'?escrowId='+ escrowId +'&sender='+ from;
+                $('#alert').addClass('alert-success').append('Escrow request has be created successfully. ID:' + escrowId +'<br>Control Panel URL: <a href="'+ cp_url +'">'+ cp_url +'</a><br>Send this link to receiver and escrow agent for their approval.').fadeIn();
 
+            } else {
+                console.error(err);
+
+                if(err.payload !== undefined) {
+                    $('#alert').addClass('alert-danger').append(err.payload.error.message.replace(/([^>])\n/g, '$1<br><br>')).fadeIn();
                 } else {
-                    console.log(err);
-
-                    if(err.payload !== undefined) {
-                        $('#alert').addClass('alert-danger').append(err.payload.error.message.replace(/([^>])\n/g, '$1<br><br>')).fadeIn();
-                    } else {
-                        $('#alert').addClass('alert-danger').append(err).fadeIn();
-                    }
+                    $('#alert').addClass('alert-danger').append(err).fadeIn();
                 }
-            });
+            }
         });
+    });
 
     event.preventDefault();
 });
+
+// Reputation calculation helper
+function calcRep(rep) {
+    return (Math.max(Math.log10(Math.abs(parseInt(rep))) - 9, 0) * (parseInt(rep) > 0 ? 1 : -1) * 9 + 25).toFixed(1);
+}
 
 // Date formating helper
 function niceDate(time) {
@@ -218,9 +340,9 @@ if ( getUrlParam('escrowId') === undefined ) {
 
                 $('#escrow_id').text(escrow_id);
                 $('#escrow_amount').text(escrow_amount);
-                $('#agent_fee').text(pending_fee);
-                $('#approval_deadline').text(niceDate(ratification_deadline));
-                $('#expiration_date').text(niceDate(escrow_expiration));
+                $('#agent_fee').text(pending_fee).append('<span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" data-placement="right" title="After approval fee will be transferred to agent."></span>');
+                $('#approval_deadline').text(niceDate(ratification_deadline)).append('<span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" data-placement="right" title="Receipient and agent should approve the escrow before this date."></span>');
+                $('#expiration_date').text(niceDate(escrow_expiration)).append('<span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" data-placement="right" title="Escrow warranty by the agent will be over after this date."></span>');
 
                 $('#sender_name').append('<a href="https://steemit.com/@'+from+'">@'+from+'</a>');
                 $('#receiver_name').append('<a href="https://steemit.com/@'+to+'">@'+to+'</a>');
@@ -335,7 +457,7 @@ $('#actionForm').submit(function(event) {
                 active_key,
                 action_value,
                 function(err, response) {
-                    $('#actionMdal').modal('hide');
+                    $('#actionModal').modal('hide');
                     location.reload();
                 }
             );
@@ -345,7 +467,7 @@ $('#actionForm').submit(function(event) {
             user,
             active_key,
             function(err, response) {
-                $('#actionMdal').modal('hide');
+                $('#actionModal').modal('hide');
                 location.reload();
             }
         );
@@ -354,7 +476,7 @@ $('#actionForm').submit(function(event) {
             user,
             active_key,
             function(err, response) {
-                $('#actionMdal').modal('hide');
+                $('#actionModal').modal('hide');
                 location.reload();
             }
         );
@@ -364,9 +486,66 @@ $('#actionForm').submit(function(event) {
             active_key,
             release_to,
             function(err, response) {
-                $('#actionMdal').modal('hide');
+                $('#actionModal').modal('hide');
                 location.reload();
             }
         );
     }
+});
+
+// Creating modal for confirmation and getting active key
+$('#actionModal').on('show.bs.modal', function (event) {
+    var btn = $(event.relatedTarget);
+    var user = btn.data('user');
+    var action = btn.data('action');
+
+    var modal = $(this);
+    modal.find('.modal-body input#action').val(action);
+    modal.find('.modal-body input#user').val(user);
+
+    var submit_btn = modal.find('button[type="submit"]');
+
+    if(action === 'approval') {
+        if(btn.data('approve') == 0 ) {
+            modal.find('.modal-title').text('Are you sure you want to disapprove this transaction?');
+            submit_btn.addClass('btn-danger').text('Dispprove');
+        } else {
+            modal.find('.modal-title').text('Are you sure you want to approve this transaction?');
+            submit_btn.addClass('btn-success').text('Approve');
+        }
+        modal.find('.modal-body input#action_value').val(btn.data('approve'));
+    }
+    else if(action === 'dispute') {
+        modal.find('.modal-title').text('Are you sure you want to dispute this transaction?');
+        submit_btn.addClass('btn-danger').text('Dispute');
+    }
+    else if(action === 'release') {
+        var release = btn.data('release');
+        modal.find('.modal-title').html('Are you sure you want to release the fund to <a href="https://steemit.com/@'+ release +'">@'+ release +'</a>?');
+        submit_btn.addClass('btn-info').text('Release');
+    }
+    else if(action === 'agent_release') {
+        modal.find('.modal-title').text('Are you sure you want to release the fund?');
+        var to = btn.data('to');
+        var from = btn.data('from');
+        modal.find('.modal-body').append('<div class="form-group"><label>Release To</label><br><div class="radio"><label><input type="radio" id="release_to" name="release_to" value="'+ to +'">Reciever ('+ to +')</div></label><div class="radio"><label><input type="radio" id="release_to" name="release_to" value="'+ from +'">Sender ('+ from +')</label></div></div>');
+        submit_btn.addClass('btn-info').text('Release');
+    }
+});
+
+// Resetting form value on modal
+$('#actionModal').on('hidden.bs.modal', function (event) {
+    var modal = $(this);
+    modal.find('.modal-body input#action').val('');
+    modal.find('.modal-body input#user').val('');
+    modal.find('.modal-body input#wif').val('');
+    modal.find('.modal-body .has-success').removeClass('has-success');
+    modal.find('.modal-body .has-error').removeClass('has-error');
+    modal.find('.modal-body p.help-block').remove();
+    modal.find('button[type="submit"]').removeClass('btn-success btn-danger btn-info');
+});
+
+// Enabling Bootstrap 3 tooltip
+$(document).ready(function() {
+    $("body").tooltip({ selector: '[data-toggle=tooltip]' });
 });
