@@ -1,8 +1,3 @@
-// STEEM cofig for test chain
-steem.api.setOptions({ url: 'wss://testnet.steem.vc' });
-steem.config.set('address_prefix', 'STX');
-steem.config.set('chain_id', '79276aea5d4877d9a25892eaa01b0adf019d3e5cb12a97478df3298ccdd01673');
-
 var transaction = {};
 
 // Getting agents list from a JSON file or can be an API
@@ -183,7 +178,7 @@ $('#escrowTransfer').submit(function(event) {
 
 
         steem.broadcast.escrowTransfer(wif, from, to, agent, escrowId, sbdAmount, steemAmount, fee, ratificationDeadline, escrowExpiration, jsonMeta, function(err, response) {
-            
+
             if(!err && response.ref_block_num) {
                 var cp_url = window.location.href +'?escrowId='+ escrowId +'&sender='+ from;
                 $('#alert').addClass('alert-success').append('Escrow request has be created successfully. ID:' + escrowId +'<br>Control Panel URL: <a href="'+ cp_url +'">'+ cp_url +'</a><br>Send this link to receiver and escrow agent for their approval.').fadeIn();
@@ -220,7 +215,7 @@ function getUrlParam(name) {
     return (results && results[1]) || undefined;
 }
 
-    
+
 if ( getUrlParam('escrowId') === undefined ) {
     $('#escrowTransfer').removeClass('hidden').fadeIn('slow');
 } else {
